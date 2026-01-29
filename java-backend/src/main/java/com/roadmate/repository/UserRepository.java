@@ -17,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "WHERE latitude IS NOT NULL AND longitude IS NOT NULL " +
                    "ORDER BY distance LIMIT 20", nativeQuery = true)
     List<User> findNearbyNomads(@Param("lat") Double lat, @Param("lng") Double lng);
+
+    java.util.Optional<User> findByEmail(String email);
 }
