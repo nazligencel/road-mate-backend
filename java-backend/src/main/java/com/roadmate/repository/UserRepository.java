@@ -7,7 +7,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
-    
+    /**
+     * Haversine Formülü kullanılarak kullanıcının mevcut 
+     * koordinatlarına göre en yakın 20 kişiyi bulur
+     */
     @Query(value = "SELECT *, (6371 * acos(cos(radians(:lat)) * cos(radians(latitude)) * " +
                    "cos(radians(longitude) - radians(:lng)) + sin(radians(:lat)) * " +
                    "sin(radians(latitude)))) AS distance FROM users " +
