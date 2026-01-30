@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> 
                     auth.requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/**").permitAll() // Test için API açık
                         .anyRequest().authenticated()
                 );
 
