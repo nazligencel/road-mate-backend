@@ -116,4 +116,27 @@ public class AuthService {
         String jwt = jwtUtils.generateToken(user.getEmail());
         return new AuthResponse(jwt, user.getEmail(), user.getName());
     }
+
+    public AuthResponse testLogin() {
+        String testEmail = "test@roadmate.com";
+
+        Optional<User> userOptional = userRepository.findByEmail(testEmail);
+        User user;
+
+        if (userOptional.isPresent()) {
+            user = userOptional.get();
+        } else {
+            user = User.builder()
+                    .email(testEmail)
+                    .name("Test User")
+                    .password(passwordEncoder.encode("test123"))
+                    .status("active")
+                    .provider("local")
+                    .build();
+            userRepository.save(user);
+        }
+
+        String jwt = jwtUtils.generateToken(user.getEmail());
+        return new AuthResponse(jwt, user.getEmail(), user.getName());
+    }
 }
