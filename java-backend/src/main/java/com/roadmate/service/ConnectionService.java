@@ -1,6 +1,10 @@
 package com.roadmate.service;
 
 import com.roadmate.dto.ConnectionDTO;
+import com.roadmate.exception.BadRequestException;
+import com.roadmate.exception.ConflictException;
+import com.roadmate.exception.ResourceNotFoundException;
+import com.roadmate.exception.UnauthorizedException;
 import com.roadmate.model.Connection;
 import com.roadmate.model.Connection.ConnectionStatus;
 import com.roadmate.model.User;
@@ -28,16 +32,16 @@ public class ConnectionService {
     public ConnectionDTO connectByQR(Long scannerUserId, Long targetUserId) {
         // Kendine bağlantı isteği gönderilemez
         if (scannerUserId.equals(targetUserId)) {
-            throw new IllegalArgumentException("Kendinize bağlantı isteği gönderemezsiniz");
+            throw new BadRequestException("Kendinize bağlantı isteği gönderemezsiniz");
         }
 
         // Tarayan kullanıcıyı bul
         User scanner = userRepository.findById(scannerUserId)
-                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı: " + scannerUserId));
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı", scannerUserId));
 
         // Hedef kullanıcıyı bul
         User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new RuntimeException("Hedef kullanıcı bulunamadı: " + targetUserId));
+                .orElseThrow(() -> new ResourceNotFoundException("Hedef kullanıcı", targetUserId));
 
         // Zaten bağlantı var mı kontrol et
         Optional<Connection> existingConnection = connectionRepository
@@ -46,7 +50,7 @@ public class ConnectionService {
         if (existingConnection.isPresent()) {
             Connection conn = existingConnection.get();
             if (conn.getStatus() == ConnectionStatus.ACCEPTED) {
-                throw new IllegalStateException("Bu kullanıcıyla zaten bağlısınız");
+                throw new ConflictException("Bu kullanıcıyla zaten bağlısınız");
             } else if (conn.getStatus() == ConnectionStatus.PENDING) {
                 // Eğer karşı taraf daha önce istek göndermişse, otomatik kabul et
                 if (conn.getUser().getId().equals(targetUserId)) {
@@ -54,7 +58,7 @@ public class ConnectionService {
                     connectionRepository.save(conn);
                     return toDTO(conn);
                 }
-                throw new IllegalStateException("Zaten bekleyen bir bağlantı isteğiniz var");
+                throw new ConflictException("Zaten bekleyen bir bağlantı isteğiniz var");
             } else if (conn.getStatus() == ConnectionStatus.REJECTED) {
                 // Reddedilmiş isteği yeniden gönder
                 conn.setStatus(ConnectionStatus.PENDING);
@@ -82,11 +86,11 @@ public class ConnectionService {
     @Transactional
     public ConnectionDTO acceptConnection(Long connectionId, Long userId) {
         Connection connection = connectionRepository.findById(connectionId)
-                .orElseThrow(() -> new RuntimeException("Bağlantı bulunamadı"));
+                .orElseThrow(() -> new ResourceNotFoundException("Bağlantı", connectionId));
 
         // Sadece hedef kullanıcı kabul edebilir
         if (!connection.getConnectedUser().getId().equals(userId)) {
-            throw new IllegalStateException("Bu isteği kabul etme yetkiniz yok");
+            throw new UnauthorizedException("Bu isteği kabul etme yetkiniz yok");
         }
 
         connection.setStatus(ConnectionStatus.ACCEPTED);
@@ -100,11 +104,11 @@ public class ConnectionService {
     @Transactional
     public ConnectionDTO rejectConnection(Long connectionId, Long userId) {
         Connection connection = connectionRepository.findById(connectionId)
-                .orElseThrow(() -> new RuntimeException("Bağlantı bulunamadı"));
+                .orElseThrow(() -> new ResourceNotFoundException("Bağlantı", connectionId));
 
         // Sadece hedef kullanıcı reddedebilir
         if (!connection.getConnectedUser().getId().equals(userId)) {
-            throw new IllegalStateException("Bu isteği reddetme yetkiniz yok");
+            throw new UnauthorizedException("Bu isteği reddetme yetkiniz yok");
         }
 
         connection.setStatus(ConnectionStatus.REJECTED);

@@ -29,6 +29,9 @@ public class User {
 
     private String name;
     private String image;
+    
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
     private String status;
     private String vehicle;
     

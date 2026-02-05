@@ -8,6 +8,10 @@ import com.roadmate.dto.auth.AuthResponse;
 import com.roadmate.dto.auth.GoogleLoginRequest;
 import com.roadmate.dto.auth.LoginRequest;
 import com.roadmate.dto.auth.RegisterRequest;
+import com.roadmate.exception.BadRequestException;
+import com.roadmate.exception.ConflictException;
+import com.roadmate.exception.ResourceNotFoundException;
+import com.roadmate.exception.UnauthorizedException;
 import com.roadmate.model.User;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
@@ -75,10 +79,10 @@ public class AuthService {
                  String token = jwtUtils.generateToken(user.getEmail());
                  return new AuthResponse(token, user.getEmail(), user.getName());
              } else {
-                 throw new RuntimeException("Invalid ID token.");
+                 throw new UnauthorizedException("Geçersiz Google token");
              }
         } catch (GeneralSecurityException | IOException e) {
-            throw new RuntimeException("Error verifying Google token: " + e.getMessage());
+            throw new UnauthorizedException("Google token doğrulaması başarısız: " + e.getMessage());
         }
     }
 
@@ -89,13 +93,14 @@ public class AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateToken(request.getEmail());
         
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı"));
         return new AuthResponse(jwt, user.getEmail(), user.getName());
     }
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Error: Email is already in use!");
+            throw new ConflictException("Bu e-posta adresi zaten kullanımda");
         }
 
         User user = User.builder()
