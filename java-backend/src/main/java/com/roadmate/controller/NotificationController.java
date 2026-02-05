@@ -3,15 +3,13 @@ package com.roadmate.controller;
 import com.roadmate.dto.NotificationDto;
 import com.roadmate.model.Notification;
 import com.roadmate.model.User;
-import com.roadmate.repository.NotificationRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
+import com.roadmate.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,7 +20,7 @@ import java.util.stream.Collectors;
 public class NotificationController {
 
     @Autowired
-    private NotificationRepository notificationRepository;
+    private NotificationService notificationService;
 
     @Autowired
     private UserRepository userRepository;
@@ -46,21 +44,9 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         User currentUser = getCurrentUser(authHeader);
 
-        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId());
+        List<Notification> notifications = notificationService.getNotifications(currentUser.getId());
 
-        List<NotificationDto> dtos = notifications.stream().map(n -> NotificationDto.builder()
-                .id(n.getId())
-                .type(n.getType())
-                .title(n.getTitle())
-                .message(n.getMessage())
-                .isRead(n.getIsRead())
-                .createdAt(n.getCreatedAt())
-                .senderId(n.getSender() != null ? n.getSender().getId() : null)
-                .senderName(n.getSender() != null ? n.getSender().getName() : null)
-                .senderImage(n.getSender() != null ? n.getSender().getImage() : null)
-                .data(n.getData())
-                .build()
-        ).collect(Collectors.toList());
+        List<NotificationDto> dtos = notifications.stream().map(this::mapToDto).collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
     }
@@ -71,21 +57,9 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         User currentUser = getCurrentUser(authHeader);
 
-        List<Notification> notifications = notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(currentUser.getId());
+        List<Notification> notifications = notificationService.getUnreadNotifications(currentUser.getId());
 
-        List<NotificationDto> dtos = notifications.stream().map(n -> NotificationDto.builder()
-                .id(n.getId())
-                .type(n.getType())
-                .title(n.getTitle())
-                .message(n.getMessage())
-                .isRead(n.getIsRead())
-                .createdAt(n.getCreatedAt())
-                .senderId(n.getSender() != null ? n.getSender().getId() : null)
-                .senderName(n.getSender() != null ? n.getSender().getName() : null)
-                .senderImage(n.getSender() != null ? n.getSender().getImage() : null)
-                .data(n.getData())
-                .build()
-        ).collect(Collectors.toList());
+        List<NotificationDto> dtos = notifications.stream().map(this::mapToDto).collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
     }
@@ -95,28 +69,26 @@ public class NotificationController {
     public ResponseEntity<Map<String, Long>> getUnreadCount(
             @RequestHeader("Authorization") String authHeader) {
         User currentUser = getCurrentUser(authHeader);
-        Long count = notificationRepository.countByUserIdAndIsReadFalse(currentUser.getId());
+        Long count = notificationService.getUnreadCount(currentUser.getId());
         return ResponseEntity.ok(Map.of("count", count));
     }
 
     // Mark all as read
     @PostMapping("/mark-all-read")
-    @Transactional
     public ResponseEntity<Map<String, String>> markAllAsRead(
             @RequestHeader("Authorization") String authHeader) {
         User currentUser = getCurrentUser(authHeader);
-        notificationRepository.markAllAsRead(currentUser.getId());
+        notificationService.markAllAsRead(currentUser.getId());
         return ResponseEntity.ok(Map.of("message", "All notifications marked as read"));
     }
 
     // Mark single notification as read
     @PostMapping("/{notificationId}/read")
-    @Transactional
     public ResponseEntity<Map<String, String>> markAsRead(
             @PathVariable Long notificationId,
             @RequestHeader("Authorization") String authHeader) {
         getCurrentUser(authHeader); // Verify user is authenticated
-        notificationRepository.markAsRead(notificationId);
+        notificationService.markAsRead(notificationId);
         return ResponseEntity.ok(Map.of("message", "Notification marked as read"));
     }
 
@@ -128,27 +100,27 @@ public class NotificationController {
         User sender = getCurrentUser(authHeader);
         Long targetUserId = request.get("targetUserId");
 
-        User targetUser = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new RuntimeException("Target user not found"));
-
-        // Create notification for target user
-        Notification notification = Notification.builder()
-                .user(targetUser)
-                .sender(sender)
-                .type("MEETING_REQUEST")
-                .title("Meeting Request")
-                .message(sender.getName() + " wants to meet up with you!")
-                .isRead(false)
-                .createdAt(LocalDateTime.now())
-                .data("{\"senderId\": " + sender.getId() + ", \"senderLat\": " + sender.getLatitude() + ", \"senderLng\": " + sender.getLongitude() + "}")
-                .build();
-
-        Notification savedNotification = notificationRepository.save(notification);
+        Notification savedNotification = notificationService.sendMeetingRequest(sender, targetUserId);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Meeting request sent to " + targetUser.getName(),
+                "message", "Meeting request sent!",
                 "notificationId", savedNotification.getId()
         ));
+    }
+
+    private NotificationDto mapToDto(Notification n) {
+        return NotificationDto.builder()
+                .id(n.getId())
+                .type(n.getType())
+                .title(n.getTitle())
+                .message(n.getMessage())
+                .isRead(n.getIsRead())
+                .createdAt(n.getCreatedAt())
+                .senderId(n.getSender() != null ? n.getSender().getId() : null)
+                .senderName(n.getSender() != null ? n.getSender().getName() : null)
+                .senderImage(n.getSender() != null ? n.getSender().getImage() : null)
+                .data(n.getData())
+                .build();
     }
 }
