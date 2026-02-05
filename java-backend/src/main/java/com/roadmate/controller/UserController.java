@@ -16,6 +16,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.util.List;
 import java.util.Map;
 
+import com.roadmate.dto.UserProfileUpdateDto;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -34,6 +36,30 @@ public class UserController {
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile() {
+        User user = getCurrentUser();
+        return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody UserProfileUpdateDto updateRequest) {
+        User user = getCurrentUser();
+        
+        if (updateRequest.getName() != null) {
+            user.setName(updateRequest.getName());
+        }
+        if (updateRequest.getVehicle() != null) {
+            user.setVehicle(updateRequest.getVehicle());
+        }
+        if (updateRequest.getStatus() != null) {
+            user.setStatus(updateRequest.getStatus());
+        }
+
+        User updatedUser = userRepository.save(user);
+        return ResponseEntity.ok(updatedUser);
     }
 
     @PostMapping("/profile-image")
