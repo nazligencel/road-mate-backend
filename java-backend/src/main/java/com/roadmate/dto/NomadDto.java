@@ -21,6 +21,8 @@ public class NomadDto {
     private Double longitude;
     private Double distance;
     private Boolean online;
+    private Boolean sosActive;
+    private Boolean showRoute;
 
     // Coordinate object for frontend compatibility
     private Coordinate coordinate;
