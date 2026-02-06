@@ -31,7 +31,6 @@ import com.roadmate.repository.PasswordResetTokenRepository;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -73,7 +72,7 @@ public class AuthService {
                  String email = payload.getEmail();
                  String name = (String) payload.get("name");
                  String pictureUrl = (String) payload.get("picture");
-                 
+
                  Optional<User> userOptional = userRepository.findByEmail(email);
                  User user;
                  if (userOptional.isPresent()) {
@@ -82,7 +81,6 @@ public class AuthService {
                      user = User.builder()
                              .email(email)
                              .name(name)
-                             .username(generateUsername(name))
                              .image(pictureUrl)
                              .provider("google")
                              .providerId(payload.getSubject())
@@ -107,7 +105,7 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateToken(request.getEmail());
-        
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı"));
         return new AuthResponse(jwt, user.getEmail(), user.getName());
@@ -120,7 +118,6 @@ public class AuthService {
 
         User user = User.builder()
                 .name(request.getName())
-                .username(generateUsername(request.getName()))
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .status("active")
@@ -145,7 +142,6 @@ public class AuthService {
             user = User.builder()
                     .email(testEmail)
                     .name("Test User")
-                    .username(generateUsername("Test User"))
                     .password(passwordEncoder.encode("test123"))
                     .status("active")
                     .provider("local")
@@ -155,32 +151,6 @@ public class AuthService {
 
         String jwt = jwtUtils.generateToken(user.getEmail());
         return new AuthResponse(jwt, user.getEmail(), user.getName());
-    }
-
-    private String generateUsername(String name) {
-        // Normalize Turkish characters: ç->c, ş->s, ğ->g, ı->i, ö->o, ü->u
-        String normalized = Normalizer.normalize(name, Normalizer.Form.NFD)
-                .replaceAll("[\\u0300-\\u036f]", "");
-        // Handle special Turkish chars that NFD doesn't decompose
-        normalized = normalized.replace("ı", "i").replace("İ", "I");
-
-        String base = normalized.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-        if (base.isEmpty()) {
-            base = "user";
-        }
-
-        String candidate = base;
-        if (!userRepository.existsByUsername(candidate)) {
-            return candidate;
-        }
-
-        // Add random suffix until unique
-        Random random = new Random();
-        do {
-            candidate = base + (random.nextInt(900) + 100); // 100-999
-        } while (userRepository.existsByUsername(candidate));
-
-        return candidate;
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
