@@ -44,6 +44,14 @@ public class User {
     private Double latitude;
     private Double longitude;
 
+    @Column(name = "subscription_type")
+    @Builder.Default
+    private String subscriptionType = "free";
+
+    @Column(name = "sos_active")
+    @Builder.Default
+    private Boolean sosActive = false;
+
     @Column(name = "last_active")
     @Builder.Default
     private LocalDateTime lastActive = LocalDateTime.now();

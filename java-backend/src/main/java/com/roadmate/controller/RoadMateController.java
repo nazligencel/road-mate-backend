@@ -74,8 +74,9 @@ public class RoadMateController {
             @RequestParam Double lng,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // Get current user ID to exclude from results
+        // Get current user to exclude from results and check subscription
         Long currentUserId = null;
+        boolean isPro = false;
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
                 String token = authHeader.substring(7);
@@ -83,12 +84,14 @@ public class RoadMateController {
                 User currentUser = userRepository.findByEmail(email).orElse(null);
                 if (currentUser != null) {
                     currentUserId = currentUser.getId();
+                    isPro = "pro".equals(currentUser.getSubscriptionType());
                 }
             } catch (Exception ignored) {}
         }
 
         List<User> users = userRepository.findNearbyNomads(lat, lng);
         final Long excludeId = currentUserId;
+        final boolean requesterIsPro = isPro;
 
         return users.stream()
                 .filter(user -> excludeId == null || !user.getId().equals(excludeId))
@@ -112,12 +115,16 @@ public class RoadMateController {
                             .longitude(user.getLongitude())
                             .distance(distance)
                             .online(online)
+                            .sosActive(Boolean.TRUE.equals(user.getSosActive()))
+                            .showRoute(requesterIsPro)
                             .coordinate(NomadDto.Coordinate.builder()
                                     .latitude(user.getLatitude())
                                     .longitude(user.getLongitude())
                                     .build())
                             .build();
                 })
+                // Free users: only see nomads within 50km
+                .filter(nomad -> requesterIsPro || nomad.getDistance() <= 50.0)
                 .collect(Collectors.toList());
     }
 
