@@ -31,7 +31,6 @@ import com.roadmate.repository.PasswordResetTokenRepository;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -55,6 +54,9 @@ public class AuthService {
     @Autowired
     PasswordResetTokenRepository passwordResetTokenRepository;
 
+    @Autowired
+    EmailService emailService;
+
     @Value("${google.client.id}")
     private String googleClientId;
 
@@ -70,7 +72,7 @@ public class AuthService {
                  String email = payload.getEmail();
                  String name = (String) payload.get("name");
                  String pictureUrl = (String) payload.get("picture");
-                 
+
                  Optional<User> userOptional = userRepository.findByEmail(email);
                  User user;
                  if (userOptional.isPresent()) {
@@ -103,7 +105,7 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateToken(request.getEmail());
-        
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı"));
         return new AuthResponse(jwt, user.getEmail(), user.getName());
@@ -155,10 +157,13 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı"));
 
-        // Delete any existing tokens for this email
+        if (!"local".equals(user.getProvider())) {
+            throw new BadRequestException(
+                    "Bu hesap " + user.getProvider() + " ile oluşturulmuş. Lütfen " + user.getProvider() + " ile giriş yapın.");
+        }
+
         passwordResetTokenRepository.deleteByEmail(request.getEmail());
 
-        // Generate 6-digit code
         String code = String.format("%06d", new Random().nextInt(999999));
 
         PasswordResetToken resetToken = PasswordResetToken.builder()
@@ -168,8 +173,7 @@ public class AuthService {
                 .build();
         passwordResetTokenRepository.save(resetToken);
 
-        // TODO: Send email with the code
-        System.out.println("Password reset code for " + request.getEmail() + ": " + code);
+        emailService.sendPasswordResetCode(request.getEmail(), code);
     }
 
     public void resetPassword(ResetPasswordRequest request) {
