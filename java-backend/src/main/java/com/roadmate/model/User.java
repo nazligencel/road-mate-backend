@@ -28,6 +28,8 @@ public class User {
     private String providerId;
 
     private String name;
+    @Column(unique = true)
+    private String username;
     private String image;
     
     @Column(name = "profile_image_url")

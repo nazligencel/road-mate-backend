@@ -19,4 +19,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findNearbyNomads(@Param("lat") Double lat, @Param("lng") Double lng);
 
     java.util.Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
 }
