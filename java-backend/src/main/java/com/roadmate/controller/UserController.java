@@ -1,9 +1,11 @@
 package com.roadmate.controller;
 
+import com.roadmate.dto.ChangePasswordRequest;
 import com.roadmate.model.GalleryPhoto;
 import com.roadmate.model.User;
 import com.roadmate.repository.GalleryPhotoRepository;
 import com.roadmate.repository.UserRepository;
+import com.roadmate.service.AuthService;
 import com.roadmate.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,9 @@ public class UserController {
 
     @Autowired
     private GalleryPhotoRepository galleryPhotoRepository;
+
+    @Autowired
+    private AuthService authService;
 
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -127,5 +132,19 @@ public class UserController {
 
         galleryPhotoRepository.delete(photo);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+        User user = getCurrentUser();
+        authService.changePassword(user.getEmail(), request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(Map.of("message", "Şifre başarıyla değiştirildi"));
+    }
+
+    @DeleteMapping("/delete-account")
+    public ResponseEntity<?> deleteAccount() {
+        User user = getCurrentUser();
+        authService.deleteAccount(user.getEmail());
+        return ResponseEntity.ok(Map.of("message", "Hesap başarıyla silindi"));
     }
 }

@@ -19,9 +19,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findConversation(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
 
     // Get all conversations for a user (latest message per conversation)
-    @Query(value = "SELECT DISTINCT ON (LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)) * " +
+    @Query(value = "SELECT * FROM (" +
+                   "SELECT DISTINCT ON (LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)) * " +
                    "FROM messages WHERE sender_id = :userId OR receiver_id = :userId " +
-                   "ORDER BY LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id), created_at DESC",
+                   "ORDER BY LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id), created_at DESC" +
+                   ") as distinct_messages ORDER BY created_at DESC",
            nativeQuery = true)
     List<Message> findLatestMessagePerConversation(@Param("userId") Long userId);
 
