@@ -3,12 +3,14 @@ package com.roadmate.controller;
 import com.roadmate.model.User;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
+import com.roadmate.service.ExpoPushService;
+import com.roadmate.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -22,10 +24,12 @@ public class SOSController {
     @Autowired
     private JwtUtils jwtUtils;
 
-    /**
-     * Activate SOS - only for Pro users.
-     * Marks the user as actively requesting roadside help.
-     */
+    @Autowired
+    private ExpoPushService expoPushService;
+
+    @Autowired
+    private NotificationService notificationService;
+
     @PostMapping("/activate")
     public ResponseEntity<?> activateSOS(
             @RequestHeader("Authorization") String authHeader) {
@@ -42,22 +46,69 @@ public class SOSController {
                 ));
             }
 
+            if (user.getLatitude() == null || user.getLongitude() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Location not available. Please update your location first."));
+            }
+
             user.setSosActive(true);
+            user.setSosActivatedAt(LocalDateTime.now());
             userRepository.save(user);
+
+            // Find nearby users within 100km who have push tokens
+            List<User> nearbyUsers = userRepository.findUsersWithPushTokenWithinRadius(
+                    user.getLatitude(), user.getLongitude(), 100.0, user.getId());
+
+            // Create in-app notifications and collect push tokens
+            List<String> pushTokens = new ArrayList<>();
+            String userName = user.getName() != null ? user.getName() : "A nomad";
+
+            for (User nearby : nearbyUsers) {
+                double distance = calculateDistance(
+                        user.getLatitude(), user.getLongitude(),
+                        nearby.getLatitude(), nearby.getLongitude());
+
+                String notifData = String.format(
+                        "{\"type\": \"SOS\", \"sosUserId\": %d, \"lat\": %f, \"lng\": %f}",
+                        user.getId(), user.getLatitude(), user.getLongitude());
+
+                notificationService.createNotification(
+                        nearby, user, "SOS_ALERT",
+                        "\uD83D\uDEA8 SOS Alert Nearby!",
+                        userName + " needs roadside help " + Math.round(distance) + "km away",
+                        notifData);
+
+                if (nearby.getExpoPushToken() != null) {
+                    pushTokens.add(nearby.getExpoPushToken());
+                }
+            }
+
+            // Send push notifications
+            if (!pushTokens.isEmpty()) {
+                Map<String, Object> pushData = new HashMap<>();
+                pushData.put("type", "SOS");
+                pushData.put("sosUserId", user.getId());
+                pushData.put("lat", user.getLatitude());
+                pushData.put("lng", user.getLongitude());
+
+                expoPushService.sendBatchPushNotifications(
+                        pushTokens,
+                        "\uD83D\uDEA8 SOS Alert Nearby!",
+                        userName + " needs roadside help nearby!",
+                        pushData);
+            }
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "sosActive", true,
-                "message", "SOS activated. Nearby users will be notified."
+                "sosActivatedAt", user.getSosActivatedAt().toString(),
+                "notifiedCount", nearbyUsers.size(),
+                "message", "SOS activated. " + nearbyUsers.size() + " nearby users have been notified."
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    /**
-     * Deactivate SOS.
-     */
     @PostMapping("/deactivate")
     public ResponseEntity<?> deactivateSOS(
             @RequestHeader("Authorization") String authHeader) {
@@ -68,6 +119,7 @@ public class SOSController {
             }
 
             user.setSosActive(false);
+            user.setSosActivatedAt(null);
             userRepository.save(user);
 
             return ResponseEntity.ok(Map.of(
@@ -80,33 +132,30 @@ public class SOSController {
         }
     }
 
-    /**
-     * Get nearby active SOS users - available to everyone.
-     */
     @GetMapping("/nearby")
     public ResponseEntity<?> getNearbySOS(
             @RequestParam Double lat,
             @RequestParam Double lng) {
         try {
-            List<User> allUsers = userRepository.findNearbyNomads(lat, lng);
+            List<User> sosUsers = userRepository.findActiveSOSUsersNearby(lat, lng);
 
-            List<Map<String, Object>> sosUsers = allUsers.stream()
-                .filter(u -> Boolean.TRUE.equals(u.getSosActive()))
+            List<Map<String, Object>> result = sosUsers.stream()
                 .map(u -> {
                     double distance = calculateDistance(lat, lng, u.getLatitude(), u.getLongitude());
-                    return Map.<String, Object>of(
-                        "id", u.getId(),
-                        "name", u.getName() != null ? u.getName() : "",
-                        "image", u.getImage() != null ? u.getImage() : (u.getProfileImageUrl() != null ? u.getProfileImageUrl() : ""),
-                        "latitude", u.getLatitude(),
-                        "longitude", u.getLongitude(),
-                        "distance", distance,
-                        "vehicle", u.getVehicle() != null ? u.getVehicle() : ""
-                    );
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", u.getId());
+                    map.put("name", u.getName() != null ? u.getName() : "");
+                    map.put("image", u.getImage() != null ? u.getImage() : (u.getProfileImageUrl() != null ? u.getProfileImageUrl() : ""));
+                    map.put("latitude", u.getLatitude());
+                    map.put("longitude", u.getLongitude());
+                    map.put("distance", distance);
+                    map.put("vehicle", u.getVehicle() != null ? u.getVehicle() : "");
+                    map.put("sosActivatedAt", u.getSosActivatedAt() != null ? u.getSosActivatedAt().toString() : null);
+                    return map;
                 })
                 .collect(Collectors.toList());
 
-            return ResponseEntity.ok(sosUsers);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
