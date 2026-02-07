@@ -159,4 +159,16 @@ public class UserController {
         authService.deleteAccount(user.getEmail());
         return ResponseEntity.ok(Map.of("message", "Hesap başarıyla silindi"));
     }
+
+    @PostMapping("/push-token")
+    public ResponseEntity<?> registerPushToken(@RequestBody Map<String, String> body) {
+        User user = getCurrentUser();
+        String pushToken = body.get("pushToken");
+        if (pushToken == null || pushToken.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "pushToken is required"));
+        }
+        user.setExpoPushToken(pushToken);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Push token registered"));
+    }
 }

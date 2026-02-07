@@ -57,6 +57,12 @@ public class User {
     @Builder.Default
     private Boolean sosActive = false;
 
+    @Column(name = "expo_push_token")
+    private String expoPushToken;
+
+    @Column(name = "sos_activated_at")
+    private LocalDateTime sosActivatedAt;
+
     @Column(name = "last_active")
     @Builder.Default
     private LocalDateTime lastActive = LocalDateTime.now();
