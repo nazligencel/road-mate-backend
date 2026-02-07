@@ -15,6 +15,7 @@ public class NomadDto {
     private String image;
     private String status;
     private String vehicle;
+    private String vehicleBrand;
     private String vehicleModel;
     private String route;
     private Double latitude;

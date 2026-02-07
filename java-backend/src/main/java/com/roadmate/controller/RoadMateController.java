@@ -109,6 +109,7 @@ public class RoadMateController {
                             .image(user.getImage() != null ? user.getImage() : user.getProfileImageUrl())
                             .status(user.getStatus())
                             .vehicle(user.getVehicle())
+                            .vehicleBrand(user.getVehicleBrand())
                             .vehicleModel(user.getVehicleModel())
                             .route(user.getRoute())
                             .latitude(user.getLatitude())

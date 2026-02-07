@@ -59,8 +59,20 @@ public class UserController {
         if (updateRequest.getVehicle() != null) {
             user.setVehicle(updateRequest.getVehicle());
         }
+        if (updateRequest.getVehicleBrand() != null) {
+            user.setVehicleBrand(updateRequest.getVehicleBrand());
+        }
+        if (updateRequest.getVehicleModel() != null) {
+            user.setVehicleModel(updateRequest.getVehicleModel());
+        }
         if (updateRequest.getStatus() != null) {
             user.setStatus(updateRequest.getStatus());
+        }
+        if (updateRequest.getTagline() != null) {
+            user.setTagline(updateRequest.getTagline());
+        }
+        if (updateRequest.getLocation() != null) {
+            user.setLocation(updateRequest.getLocation());
         }
 
         User updatedUser = userRepository.save(user);

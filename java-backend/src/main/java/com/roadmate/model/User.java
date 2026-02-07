@@ -35,10 +35,15 @@ public class User {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
     private String status;
+    private String tagline;
+    private String location;
     private String vehicle;
     
     @Column(name = "vehicle_model")
     private String vehicleModel;
+    
+    @Column(name = "vehicle_brand")
+    private String vehicleBrand;
     
     private String route;
     private Double latitude;
