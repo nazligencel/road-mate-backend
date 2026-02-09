@@ -138,6 +138,10 @@ public class AuthService {
 
         if (userOptional.isPresent()) {
             user = userOptional.get();
+            if (!"pro".equals(user.getSubscriptionType())) {
+                user.setSubscriptionType("pro");
+                userRepository.save(user);
+            }
         } else {
             user = User.builder()
                     .email(testEmail)
@@ -145,6 +149,7 @@ public class AuthService {
                     .password(passwordEncoder.encode("test123"))
                     .status("active")
                     .provider("local")
+                    .subscriptionType("pro")
                     .build();
             userRepository.save(user);
         }

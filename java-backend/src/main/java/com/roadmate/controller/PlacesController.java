@@ -24,6 +24,55 @@ public class PlacesController {
         "fuel", "type=gas_station"
     );
 
+    @GetMapping("/autocomplete")
+    public ResponseEntity<?> getAutocompleteSuggestions(@RequestParam String input) {
+        if (input == null || input.length() < 2) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        try {
+            String url = String.format(
+                "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=%s&key=%s",
+                java.net.URLEncoder.encode(input, "UTF-8"), googlePlacesApiKey
+            );
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response == null) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            String status = (String) response.get("status");
+            if (!"OK".equals(status) && !"ZERO_RESULTS".equals(status)) {
+                System.err.println("Autocomplete API Error: " + status + " - " + response.get("error_message"));
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> predictions = (List<Map<String, Object>>) response.getOrDefault("predictions", Collections.emptyList());
+
+            List<Map<String, Object>> suggestions = new ArrayList<>();
+            for (Map<String, Object> prediction : predictions) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> structuredFormatting = (Map<String, Object>) prediction.get("structured_formatting");
+
+                Map<String, Object> suggestion = new HashMap<>();
+                suggestion.put("placeId", prediction.get("place_id"));
+                suggestion.put("description", prediction.get("description"));
+                suggestion.put("mainText", structuredFormatting != null ? structuredFormatting.get("main_text") : prediction.get("description"));
+                suggestion.put("secondaryText", structuredFormatting != null ? structuredFormatting.get("secondary_text") : "");
+                suggestions.add(suggestion);
+            }
+
+            return ResponseEntity.ok(suggestions);
+
+        } catch (Exception e) {
+            System.err.println("Error fetching autocomplete suggestions: " + e.getMessage());
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+    }
+
     @GetMapping("/nearby")
     public ResponseEntity<?> getNearbyPlaces(
             @RequestParam Double lat,

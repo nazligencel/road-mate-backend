@@ -2,6 +2,7 @@ package com.roadmate.service;
 
 import com.roadmate.dto.ActivityDto;
 import com.roadmate.dto.CreateActivityRequest;
+import com.roadmate.dto.UpdateActivityRequest;
 import com.roadmate.model.Activity;
 import com.roadmate.model.Connection;
 import com.roadmate.model.User;
@@ -66,6 +67,27 @@ public class ActivityService {
     }
 
     @Transactional
+    public ActivityDto updateActivity(User user, Long activityId, UpdateActivityRequest request) {
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new RuntimeException("Activity not found"));
+
+        if (!activity.getCreator().getId().equals(user.getId())) {
+            throw new RuntimeException("Only the creator can edit this activity");
+        }
+
+        activity.setTitle(request.getTitle());
+        activity.setDescription(request.getDescription());
+        activity.setLocation(request.getLocation());
+        activity.setDate(request.getDate());
+        activity.setTime(request.getTime());
+        activity.setType(request.getType());
+        activity.setImage(request.getImage());
+
+        Activity savedActivity = activityRepository.save(activity);
+        return mapToDto(savedActivity, user);
+    }
+
+    @Transactional
     public void joinActivity(User user, Long activityId) {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
@@ -110,6 +132,20 @@ public class ActivityService {
 
         activity.setStatus("CANCELLED");
         activityRepository.save(activity);
+
+        // Notify all participants about cancellation
+        for (User participant : activity.getParticipants()) {
+            if (!participant.getId().equals(user.getId())) {
+                notificationService.createNotification(
+                        participant,
+                        user,
+                        "ACTIVITY_CANCELLED",
+                        "Activity Cancelled",
+                        user.getName() + " cancelled the activity: " + activity.getTitle(),
+                        "{\"activityId\": " + activityId + "}"
+                );
+            }
+        }
     }
 
     private void notifyConnectedUsers(User creator, Activity activity) {

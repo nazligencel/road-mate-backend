@@ -10,9 +10,9 @@ import java.util.List;
 public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
     // Get activities created by connected users (friends) + own activities
-    @Query("SELECT a FROM Activity a WHERE a.creator.id = :userId OR a.creator.id IN " +
+    @Query("SELECT a FROM Activity a WHERE a.status <> 'CANCELLED' AND (a.creator.id = :userId OR a.creator.id IN " +
            "(SELECT c.connectedUser.id FROM Connection c WHERE c.user.id = :userId AND c.status = 'ACCEPTED') OR " +
-           "a.creator.id IN (SELECT c.user.id FROM Connection c WHERE c.connectedUser.id = :userId AND c.status = 'ACCEPTED') " +
+           "a.creator.id IN (SELECT c.user.id FROM Connection c WHERE c.connectedUser.id = :userId AND c.status = 'ACCEPTED')) " +
            "ORDER BY a.createdAt DESC")
     List<Activity> findActivitiesForUser(@Param("userId") Long userId);
 

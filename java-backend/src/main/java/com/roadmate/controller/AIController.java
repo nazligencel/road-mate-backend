@@ -1,5 +1,7 @@
 package com.roadmate.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roadmate.model.User;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
@@ -11,8 +13,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.List;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -25,12 +27,15 @@ public class AIController {
     @Autowired
     private JwtUtils jwtUtils;
 
-    private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final HttpClient httpClient = HttpClient.newHttpClient();
 
-    /**
-     * AI Chat - Pro only.
-     * Proxies to OpenAI GPT for road/vehicle assistance.
-     */
+    private static final String SYSTEM_PROMPT = "You are RoadMate AI Assistant, a helpful road trip and vehicle companion. " +
+        "You help nomads and travelers with: route planning, vehicle maintenance tips, " +
+        "roadside troubleshooting, camping spot suggestions, weather advice, and general road trip guidance. " +
+        "Keep responses concise and practical. Answer in the same language the user writes in.";
+
     @PostMapping("/chat")
     public ResponseEntity<?> chat(
             @RequestHeader("Authorization") String authHeader,
@@ -50,75 +55,61 @@ public class AIController {
 
             String message = payload.get("message").toString();
 
-            String openaiKey = System.getenv("OPENAI_API_KEY");
-            if (openaiKey == null || openaiKey.isEmpty()) {
-                // Try dotenv
-                try {
-                    io.github.cdimascio.dotenv.Dotenv dotenv = io.github.cdimascio.dotenv.Dotenv.configure().ignoreIfMissing().load();
-                    openaiKey = dotenv.get("OPENAI_API_KEY");
-                } catch (Exception ignored) {}
+            String geminiKey = System.getProperty("GEMINI_API_KEY");
+            if (geminiKey == null || geminiKey.isEmpty()) {
+                geminiKey = System.getenv("GEMINI_API_KEY");
             }
 
-            if (openaiKey == null || openaiKey.isEmpty()) {
-                return ResponseEntity.status(500).body(Map.of("error", "AI service not configured. Please set OPENAI_API_KEY."));
+            if (geminiKey == null || geminiKey.isEmpty()) {
+                return ResponseEntity.status(500).body(Map.of("error", "AI service not configured. Please set GEMINI_API_KEY."));
             }
 
-            String systemPrompt = "You are RoadMate AI Assistant, a helpful road trip and vehicle companion. " +
-                "You help nomads and travelers with: route planning, vehicle maintenance tips, " +
-                "roadside troubleshooting, camping spot suggestions, weather advice, and general road trip guidance. " +
-                "Keep responses concise and practical. Answer in the same language the user writes in.";
+            // Build request body using HashMap for reliability
+            Map<String, Object> systemInstruction = new HashMap<>();
+            systemInstruction.put("parts", List.of(Map.of("text", SYSTEM_PROMPT)));
 
-            String requestBody = """
-                {
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": "%s"},
-                        {"role": "user", "content": "%s"}
-                    ],
-                    "max_tokens": 500,
-                    "temperature": 0.7
-                }
-                """.formatted(
-                    systemPrompt.replace("\"", "\\\""),
-                    message.replace("\"", "\\\"").replace("\n", "\\n")
-                );
+            Map<String, Object> userContent = new HashMap<>();
+            userContent.put("role", "user");
+            userContent.put("parts", List.of(Map.of("text", message)));
 
-            HttpClient client = HttpClient.newHttpClient();
+            Map<String, Object> genConfig = new HashMap<>();
+            genConfig.put("maxOutputTokens", 500);
+            genConfig.put("temperature", 0.7);
+
+            Map<String, Object> requestBodyMap = new HashMap<>();
+            requestBodyMap.put("system_instruction", systemInstruction);
+            requestBodyMap.put("contents", List.of(userContent));
+            requestBodyMap.put("generationConfig", genConfig);
+
+            String requestBody = objectMapper.writeValueAsString(requestBodyMap);
+
+            String url = GEMINI_API_URL + "?key=" + geminiKey;
+
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(OPENAI_API_URL))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + openaiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
                 .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
             if (response.statusCode() != 200) {
-                return ResponseEntity.status(502).body(Map.of("error", "AI service error", "detail", response.body()));
+                String detail = response.body();
+                System.err.println("Gemini API error (" + response.statusCode() + "): " + detail);
+                return ResponseEntity.status(502).body(Map.of("error", "AI service error", "detail", detail));
             }
 
-            // Parse the response to extract the message content
-            String responseBody = response.body();
-            // Simple JSON extraction for the content field
-            int contentStart = responseBody.indexOf("\"content\":");
-            if (contentStart == -1) {
+            JsonNode root = objectMapper.readTree(response.body());
+            String aiReply = root.path("candidates").path(0)
+                .path("content").path("parts").path(0).path("text").asText();
+
+            if (aiReply == null || aiReply.isEmpty()) {
                 return ResponseEntity.ok(Map.of("reply", "Sorry, I couldn't process your request."));
             }
 
-            // Find the content value - it's after "content": "
-            int valueStart = responseBody.indexOf("\"", contentStart + 10) + 1;
-            int valueEnd = responseBody.indexOf("\"", valueStart);
-            // Handle escaped quotes
-            while (valueEnd > 0 && responseBody.charAt(valueEnd - 1) == '\\') {
-                valueEnd = responseBody.indexOf("\"", valueEnd + 1);
-            }
-
-            String aiReply = responseBody.substring(valueStart, valueEnd)
-                .replace("\\n", "\n")
-                .replace("\\\"", "\"");
-
             return ResponseEntity.ok(Map.of("reply", aiReply));
         } catch (Exception e) {
+            System.err.println("AI chat exception: " + e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

@@ -2,6 +2,7 @@ package com.roadmate.controller;
 
 import com.roadmate.dto.ActivityDto;
 import com.roadmate.dto.CreateActivityRequest;
+import com.roadmate.dto.UpdateActivityRequest;
 import com.roadmate.model.User;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
@@ -130,6 +131,24 @@ public class ActivityController {
         User currentUser = getCurrentUser(authHeader);
         ActivityDto dto = activityService.getActivity(activityId, currentUser);
         return ResponseEntity.ok(dto);
+    }
+
+    // Update activity
+    @PutMapping("/{activityId}")
+    public ResponseEntity<?> updateActivity(
+            @PathVariable Long activityId,
+            @Valid @RequestBody UpdateActivityRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            User currentUser = getCurrentUser(authHeader);
+            ActivityDto dto = activityService.updateActivity(currentUser, activityId, request);
+            return ResponseEntity.ok(dto);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
     }
 
     // Cancel activity
