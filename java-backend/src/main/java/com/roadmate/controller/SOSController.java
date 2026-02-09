@@ -1,6 +1,7 @@
 package com.roadmate.controller;
 
 import com.roadmate.model.User;
+import com.roadmate.repository.BlockedUserRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
 import com.roadmate.service.ExpoPushService;
@@ -20,6 +21,9 @@ public class SOSController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BlockedUserRepository blockedUserRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -55,8 +59,13 @@ public class SOSController {
             userRepository.save(user);
 
             // Find nearby users within 100km who have push tokens
-            List<User> nearbyUsers = userRepository.findUsersWithPushTokenWithinRadius(
+            List<User> allNearbyUsers = userRepository.findUsersWithPushTokenWithinRadius(
                     user.getLatitude(), user.getLongitude(), 100.0, user.getId());
+
+            // Filter out users who have blocked the SOS sender or are blocked by them
+            List<User> nearbyUsers = allNearbyUsers.stream()
+                    .filter(nearby -> !blockedUserRepository.existsBlockBetween(user.getId(), nearby.getId()))
+                    .collect(java.util.stream.Collectors.toList());
 
             // Create in-app notifications and collect push tokens
             List<String> pushTokens = new ArrayList<>();
@@ -135,9 +144,19 @@ public class SOSController {
     @GetMapping("/nearby")
     public ResponseEntity<?> getNearbySOS(
             @RequestParam Double lat,
-            @RequestParam Double lng) {
+            @RequestParam Double lng,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             List<User> sosUsers = userRepository.findActiveSOSUsersNearby(lat, lng);
+
+            // Filter out blocked users if authenticated
+            User currentUser = getUserFromToken(authHeader);
+            if (currentUser != null) {
+                List<Long> blockedIds = blockedUserRepository.findBlockedUserIdsByBlockerId(currentUser.getId());
+                sosUsers = sosUsers.stream()
+                        .filter(u -> !blockedIds.contains(u.getId()))
+                        .collect(java.util.stream.Collectors.toList());
+            }
 
             List<Map<String, Object>> result = sosUsers.stream()
                 .map(u -> {
