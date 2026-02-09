@@ -2,6 +2,7 @@ package com.roadmate.controller;
 
 import com.roadmate.dto.NomadDto;
 import com.roadmate.model.User;
+import com.roadmate.repository.BlockedUserRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,6 +23,9 @@ public class RoadMateController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BlockedUserRepository blockedUserRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -93,8 +98,14 @@ public class RoadMateController {
         final Long excludeId = currentUserId;
         final boolean requesterIsPro = isPro;
 
+        // Get blocked user IDs to filter from results
+        final List<Long> blockedIds = currentUserId != null
+                ? blockedUserRepository.findBlockedUserIdsByBlockerId(currentUserId)
+                : Collections.emptyList();
+
         return users.stream()
                 .filter(user -> excludeId == null || !user.getId().equals(excludeId))
+                .filter(user -> !blockedIds.contains(user.getId()))
                 .map(user -> {
                     // Calculate distance using Haversine formula
                     double distance = calculateDistance(lat, lng, user.getLatitude(), user.getLongitude());

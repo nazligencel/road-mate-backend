@@ -6,6 +6,7 @@ import com.roadmate.dto.SendMessageRequest;
 import com.roadmate.model.Message;
 import com.roadmate.model.Notification;
 import com.roadmate.model.User;
+import com.roadmate.repository.BlockedUserRepository;
 import com.roadmate.repository.MessageRepository;
 import com.roadmate.repository.NotificationRepository;
 import com.roadmate.repository.UserRepository;
@@ -35,6 +36,9 @@ public class MessageController {
     private NotificationRepository notificationRepository;
 
     @Autowired
+    private BlockedUserRepository blockedUserRepository;
+
+    @Autowired
     private JwtUtils jwtUtils;
 
     private User getCurrentUser(String authHeader) {
@@ -55,7 +59,17 @@ public class MessageController {
 
         List<Message> latestMessages = messageRepository.findLatestMessagePerConversation(currentUser.getId());
 
-        List<ConversationDto> conversations = latestMessages.stream().map(msg -> {
+        // Get blocked user IDs to filter conversations
+        List<Long> blockedIds = blockedUserRepository.findBlockedUserIdsByBlockerId(currentUser.getId());
+
+        List<ConversationDto> conversations = latestMessages.stream()
+            .filter(msg -> {
+                User otherUser = msg.getSender().getId().equals(currentUser.getId())
+                        ? msg.getReceiver()
+                        : msg.getSender();
+                return !blockedIds.contains(otherUser.getId());
+            })
+            .map(msg -> {
             User otherUser = msg.getSender().getId().equals(currentUser.getId())
                     ? msg.getReceiver()
                     : msg.getSender();
@@ -120,6 +134,11 @@ public class MessageController {
         User sender = getCurrentUser(authHeader);
         User receiver = userRepository.findById(request.getReceiverId())
                 .orElseThrow(() -> new RuntimeException("Receiver not found"));
+
+        // Block check: either direction blocks messaging
+        if (blockedUserRepository.existsBlockBetween(sender.getId(), receiver.getId())) {
+            return ResponseEntity.status(403).body(null);
+        }
 
         Message message = Message.builder()
                 .sender(sender)

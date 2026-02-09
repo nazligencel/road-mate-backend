@@ -3,6 +3,7 @@ package com.roadmate.controller;
 import com.roadmate.dto.NotificationDto;
 import com.roadmate.model.Notification;
 import com.roadmate.model.User;
+import com.roadmate.repository.BlockedUserRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
 import com.roadmate.service.NotificationService;
@@ -24,6 +25,9 @@ public class NotificationController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BlockedUserRepository blockedUserRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -99,6 +103,14 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         User sender = getCurrentUser(authHeader);
         Long targetUserId = request.get("targetUserId");
+
+        // Block check: cannot send meeting request if either direction is blocked
+        if (blockedUserRepository.existsBlockBetween(sender.getId(), targetUserId)) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "success", false,
+                    "message", "Cannot send meeting request to this user"
+            ));
+        }
 
         Notification savedNotification = notificationService.sendMeetingRequest(sender, targetUserId);
 
