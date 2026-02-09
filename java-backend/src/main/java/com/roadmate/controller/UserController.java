@@ -7,6 +7,7 @@ import com.roadmate.repository.GalleryPhotoRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.service.AuthService;
 import com.roadmate.service.FileStorageService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -50,7 +51,7 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@RequestBody UserProfileUpdateDto updateRequest) {
+    public ResponseEntity<?> updateProfile(@Valid @RequestBody UserProfileUpdateDto updateRequest) {
         User user = getCurrentUser();
         
         if (updateRequest.getName() != null) {
@@ -147,7 +148,7 @@ public class UserController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         User user = getCurrentUser();
         authService.changePassword(user.getEmail(), request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok(Map.of("message", "Şifre başarıyla değiştirildi"));

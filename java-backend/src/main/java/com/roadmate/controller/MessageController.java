@@ -11,6 +11,7 @@ import com.roadmate.repository.MessageRepository;
 import com.roadmate.repository.NotificationRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -129,7 +130,7 @@ public class MessageController {
     // Send a message
     @PostMapping("/send")
     public ResponseEntity<MessageDto> sendMessage(
-            @RequestBody SendMessageRequest request,
+            @Valid @RequestBody SendMessageRequest request,
             @RequestHeader("Authorization") String authHeader) {
         User sender = getCurrentUser(authHeader);
         User receiver = userRepository.findById(request.getReceiverId())
