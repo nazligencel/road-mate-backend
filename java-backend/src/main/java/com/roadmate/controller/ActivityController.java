@@ -7,6 +7,7 @@ import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
 import com.roadmate.service.ActivityService;
 import com.roadmate.service.FileStorageService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -72,7 +73,7 @@ public class ActivityController {
     // Create activity
     @PostMapping
     public ResponseEntity<ActivityDto> createActivity(
-            @RequestBody CreateActivityRequest request,
+            @Valid @RequestBody CreateActivityRequest request,
             @RequestHeader("Authorization") String authHeader) {
         User creator = getCurrentUser(authHeader);
         ActivityDto dto = activityService.createActivity(creator, request);

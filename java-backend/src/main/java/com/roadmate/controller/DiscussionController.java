@@ -9,6 +9,7 @@ import com.roadmate.repository.UserRepository;
 import com.roadmate.security.JwtUtils;
 import com.roadmate.service.DiscussionService;
 import com.roadmate.service.FileStorageService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -67,7 +68,7 @@ public class DiscussionController {
     // Create discussion
     @PostMapping
     public ResponseEntity<DiscussionDto> createDiscussion(
-            @RequestBody CreateDiscussionRequest request,
+            @Valid @RequestBody CreateDiscussionRequest request,
             @RequestHeader("Authorization") String authHeader) {
         User creator = getCurrentUser(authHeader);
         DiscussionDto dto = discussionService.createDiscussion(creator, request);
@@ -105,7 +106,7 @@ public class DiscussionController {
     @PostMapping("/{id}/comments")
     public ResponseEntity<DiscussionCommentDto> addComment(
             @PathVariable Long id,
-            @RequestBody CreateCommentRequest request,
+            @Valid @RequestBody CreateCommentRequest request,
             @RequestHeader("Authorization") String authHeader) {
         User author = getCurrentUser(authHeader);
         DiscussionCommentDto comment = discussionService.addComment(author, id, request.getText());
