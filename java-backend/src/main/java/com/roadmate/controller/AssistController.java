@@ -107,7 +107,7 @@ public class AssistController {
                 mDto.put("content", m.getContent());
                 mDto.put("userId", m.getUser().getId());
                 mDto.put("userName", m.getUser().getName());
-                mDto.put("userImage", m.getUser().getImage() != null ? m.getUser().getImage() : m.getUser().getProfileImageUrl());
+                mDto.put("userImage", getUserImage(m.getUser()));
                 mDto.put("createdAt", m.getCreatedAt().toString());
                 return mDto;
             }).collect(Collectors.toList()));
@@ -150,7 +150,7 @@ public class AssistController {
             mDto.put("content", saved.getContent());
             mDto.put("userId", user.getId());
             mDto.put("userName", user.getName());
-            mDto.put("userImage", user.getImage() != null ? user.getImage() : user.getProfileImageUrl());
+            mDto.put("userImage", getUserImage(user));
             mDto.put("createdAt", saved.getCreatedAt().toString());
 
             return ResponseEntity.ok(mDto);
@@ -271,10 +271,17 @@ public class AssistController {
         dto.put("createdAt", request.getCreatedAt().toString());
         dto.put("userId", request.getUser().getId());
         dto.put("userName", request.getUser().getName());
-        dto.put("userImage", request.getUser().getImage() != null ? request.getUser().getImage() : request.getUser().getProfileImageUrl());
+        dto.put("userImage", getUserImage(request.getUser()));
         long messageCount = assistMessageRepository.countByAssistRequestId(request.getId());
         dto.put("messageCount", messageCount);
         return dto;
+    }
+
+    private String getUserImage(User user) {
+        if (user.getProfileImageUrl() != null && !user.getProfileImageUrl().isEmpty()) {
+            return user.getProfileImageUrl();
+        }
+        return user.getImage();
     }
 
     private User getUserFromToken(String authHeader) {

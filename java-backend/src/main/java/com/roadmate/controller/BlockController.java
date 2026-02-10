@@ -113,8 +113,8 @@ public class BlockController {
                 return Map.<String, Object>of(
                         "id", blocked.getId(),
                         "name", blocked.getName() != null ? blocked.getName() : "",
-                        "image", blocked.getImage() != null ? blocked.getImage() :
-                                (blocked.getProfileImageUrl() != null ? blocked.getProfileImageUrl() : ""),
+                        "image", blocked.getProfileImageUrl() != null && !blocked.getProfileImageUrl().isEmpty() ? blocked.getProfileImageUrl() :
+                                (blocked.getImage() != null ? blocked.getImage() : ""),
                         "blockedAt", b.getCreatedAt().toString()
                 );
             }).collect(Collectors.toList());
