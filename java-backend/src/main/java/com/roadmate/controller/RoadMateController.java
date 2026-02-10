@@ -117,7 +117,7 @@ public class RoadMateController {
                     return NomadDto.builder()
                             .id(user.getId())
                             .name(user.getName())
-                            .image(user.getImage() != null ? user.getImage() : user.getProfileImageUrl())
+                            .image(user.getProfileImageUrl() != null && !user.getProfileImageUrl().isEmpty() ? user.getProfileImageUrl() : user.getImage())
                             .status(user.getStatus())
                             .vehicle(user.getVehicle())
                             .vehicleBrand(user.getVehicleBrand())

@@ -187,7 +187,7 @@ public class ActivityService {
                 .createdAt(activity.getCreatedAt())
                 .creatorId(activity.getCreator().getId())
                 .creatorName(activity.getCreator().getName())
-                .creatorImage(activity.getCreator().getImage())
+                .creatorImage(activity.getCreator().getProfileImageUrl() != null && !activity.getCreator().getProfileImageUrl().isEmpty() ? activity.getCreator().getProfileImageUrl() : activity.getCreator().getImage())
                 .participantCount(activity.getParticipants().size())
                 .hasJoined(hasJoined)
                 .build();

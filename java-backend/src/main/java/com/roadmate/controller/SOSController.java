@@ -164,7 +164,7 @@ public class SOSController {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", u.getId());
                     map.put("name", u.getName() != null ? u.getName() : "");
-                    map.put("image", u.getImage() != null ? u.getImage() : (u.getProfileImageUrl() != null ? u.getProfileImageUrl() : ""));
+                    map.put("image", u.getProfileImageUrl() != null && !u.getProfileImageUrl().isEmpty() ? u.getProfileImageUrl() : (u.getImage() != null ? u.getImage() : ""));
                     map.put("latitude", u.getLatitude());
                     map.put("longitude", u.getLongitude());
                     map.put("distance", distance);

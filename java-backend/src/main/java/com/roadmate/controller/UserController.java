@@ -2,8 +2,10 @@ package com.roadmate.controller;
 
 import com.roadmate.dto.ChangePasswordRequest;
 import com.roadmate.model.GalleryPhoto;
+import com.roadmate.model.VehiclePhoto;
 import com.roadmate.model.User;
 import com.roadmate.repository.GalleryPhotoRepository;
+import com.roadmate.repository.VehiclePhotoRepository;
 import com.roadmate.repository.UserRepository;
 import com.roadmate.service.AuthService;
 import com.roadmate.service.FileStorageService;
@@ -33,6 +35,9 @@ public class UserController {
 
     @Autowired
     private GalleryPhotoRepository galleryPhotoRepository;
+
+    @Autowired
+    private VehiclePhotoRepository vehiclePhotoRepository;
 
     @Autowired
     private AuthService authService;
@@ -144,6 +149,56 @@ public class UserController {
         }
 
         galleryPhotoRepository.delete(photo);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/vehicle-image")
+    public ResponseEntity<?> uploadVehiclePhoto(@RequestParam("file") MultipartFile file) {
+        User user = getCurrentUser();
+
+        if (vehiclePhotoRepository.countByUserId(user.getId()) >= 6) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Maximum 6 vehicle photos allowed"));
+        }
+
+        String fileName = fileStorageService.store(file);
+        String fileDownloadUri = "/uploads/" + fileName;
+
+        VehiclePhoto photo = VehiclePhoto.builder()
+                .user(user)
+                .photoUrl(fileDownloadUri)
+                .build();
+
+        vehiclePhotoRepository.save(photo);
+        return ResponseEntity.ok(photo);
+    }
+
+    @GetMapping("/vehicle-images")
+    public ResponseEntity<List<VehiclePhoto>> getVehiclePhotos() {
+        User user = getCurrentUser();
+        List<VehiclePhoto> photos = vehiclePhotoRepository.findByUserId(user.getId());
+        return ResponseEntity.ok(photos);
+    }
+
+    @DeleteMapping("/vehicle-image/{photoId}")
+    public ResponseEntity<?> deleteVehiclePhoto(@PathVariable Long photoId) {
+        User user = getCurrentUser();
+        VehiclePhoto photo = vehiclePhotoRepository.findById(photoId)
+                .orElseThrow(() -> new RuntimeException("Photo not found"));
+
+        if (!photo.getUser().getId().equals(user.getId())) {
+            return ResponseEntity.status(403).body("Not authorized to delete this photo");
+        }
+
+        String photoUrl = photo.getPhotoUrl();
+        String filename = photoUrl.substring(photoUrl.lastIndexOf("/") + 1);
+
+        try {
+            fileStorageService.delete(filename);
+        } catch (Exception e) {
+            System.err.println("File deletion failed: " + e.getMessage());
+        }
+
+        vehiclePhotoRepository.delete(photo);
         return ResponseEntity.ok().build();
     }
 

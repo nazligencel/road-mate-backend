@@ -83,7 +83,7 @@ public class MessageController {
             return ConversationDto.builder()
                     .odUserId(otherUser.getId())
                     .otherUserName(otherUser.getName())
-                    .otherUserImage(otherUser.getImage() != null ? otherUser.getImage() : otherUser.getProfileImageUrl())
+                    .otherUserImage(otherUser.getProfileImageUrl() != null && !otherUser.getProfileImageUrl().isEmpty() ? otherUser.getProfileImageUrl() : otherUser.getImage())
                     .otherUserOnline(isOnline)
                     .lastMessage(msg.getContent())
                     .lastMessageTime(msg.getCreatedAt())
