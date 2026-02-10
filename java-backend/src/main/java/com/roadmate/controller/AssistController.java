@@ -160,6 +160,76 @@ public class AssistController {
     }
 
     /**
+     * Edit an assist request - only the creator can edit.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> editAssistRequest(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, Object> payload) {
+        try {
+            User user = getUserFromToken(authHeader);
+            if (user == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+
+            AssistRequest request = assistRequestRepository.findById(id).orElse(null);
+            if (request == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Assist request not found"));
+            }
+
+            if (!request.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only the creator can edit this request"));
+            }
+
+            if (payload.containsKey("title") && payload.get("title") != null) {
+                request.setTitle(payload.get("title").toString());
+            }
+            if (payload.containsKey("description")) {
+                request.setDescription(payload.get("description") != null ? payload.get("description").toString() : "");
+            }
+
+            assistRequestRepository.save(request);
+            return ResponseEntity.ok(mapRequestToDto(request));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Delete an assist request - only the creator can delete.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteAssistRequest(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            User user = getUserFromToken(authHeader);
+            if (user == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+
+            AssistRequest request = assistRequestRepository.findById(id).orElse(null);
+            if (request == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Assist request not found"));
+            }
+
+            if (!request.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only the creator can delete this request"));
+            }
+
+            assistMessageRepository.deleteAll(
+                assistMessageRepository.findByAssistRequestIdOrderByCreatedAtAsc(id)
+            );
+            assistRequestRepository.delete(request);
+
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Mark an assist request as resolved.
      */
     @PutMapping("/{id}/resolve")
@@ -202,6 +272,8 @@ public class AssistController {
         dto.put("userId", request.getUser().getId());
         dto.put("userName", request.getUser().getName());
         dto.put("userImage", request.getUser().getImage() != null ? request.getUser().getImage() : request.getUser().getProfileImageUrl());
+        long messageCount = assistMessageRepository.countByAssistRequestId(request.getId());
+        dto.put("messageCount", messageCount);
         return dto;
     }
 

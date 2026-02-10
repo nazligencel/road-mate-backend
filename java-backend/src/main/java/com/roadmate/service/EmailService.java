@@ -18,12 +18,13 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            helper.setFrom("roadmatenomad@gmail.com", "RoadMate");
             helper.setTo(to);
             helper.setSubject("RoadMate - Şifre Sıfırlama Kodu");
             helper.setText(buildResetEmailHtml(code), true);
 
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
             throw new RuntimeException("E-posta gönderilemedi: " + e.getMessage(), e);
         }
     }

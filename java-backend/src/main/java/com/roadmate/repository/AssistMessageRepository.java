@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface AssistMessageRepository extends JpaRepository<AssistMessage, Long> {
     List<AssistMessage> findByAssistRequestIdOrderByCreatedAtAsc(Long assistRequestId);
+    long countByAssistRequestId(Long assistRequestId);
 }
