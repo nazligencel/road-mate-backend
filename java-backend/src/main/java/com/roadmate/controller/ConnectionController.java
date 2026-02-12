@@ -140,6 +140,72 @@ public class ConnectionController {
     }
 
     /**
+     * Profil/explore'dan arkadaş isteği gönder
+     * POST /api/connections/request/{targetUserId}
+     */
+    @PostMapping("/request/{targetUserId}")
+    public ResponseEntity<?> sendConnectionRequest(
+            @PathVariable Long targetUserId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            Long userId = getUserIdFromDetails(userDetails);
+            ConnectionDTO connection = connectionService.sendConnectionRequest(userId, targetUserId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Friend request sent");
+            response.put("connection", connection);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * İki kullanıcı arası bağlantı durumu kontrolü
+     * GET /api/connections/status/{userId}
+     */
+    @GetMapping("/status/{userId}")
+    public ResponseEntity<Map<String, String>> getConnectionStatus(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long currentUserId = getUserIdFromDetails(userDetails);
+        String status = connectionService.getConnectionStatus(currentUserId, userId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", status);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Arkadaşı sil / isteği iptal et
+     * DELETE /api/connections/user/{userId}
+     */
+    @DeleteMapping("/user/{userId}")
+    public ResponseEntity<?> removeConnection(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            Long currentUserId = getUserIdFromDetails(userDetails);
+            connectionService.removeConnection(currentUserId, userId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Connection removed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
      * UserDetails'dan userId'yi al
      */
     private Long getUserIdFromDetails(UserDetails userDetails) {

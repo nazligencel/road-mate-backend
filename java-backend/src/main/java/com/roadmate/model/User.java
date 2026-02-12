@@ -1,5 +1,6 @@
 package com.roadmate.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,10 +22,13 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @JsonIgnore
     private String password;
 
+    @JsonIgnore
     private String provider;
 
+    @JsonIgnore
     private String providerId;
 
     private String name;
@@ -57,6 +61,7 @@ public class User {
     @Builder.Default
     private Boolean sosActive = false;
 
+    @JsonIgnore
     @Column(name = "expo_push_token")
     private String expoPushToken;
 

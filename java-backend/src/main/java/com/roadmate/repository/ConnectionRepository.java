@@ -39,4 +39,10 @@ public interface ConnectionRepository extends JpaRepository<Connection, Long> {
            "(c.user.id = :userId OR c.connectedUser.id = :userId) " +
            "AND c.status = 'ACCEPTED'")
     Long countAcceptedConnections(@Param("userId") Long userId);
+
+    // Kullanıcının tüm accepted arkadaşlarının User nesnelerini döndür
+    @Query("SELECT CASE WHEN c.user.id = :userId THEN c.connectedUser ELSE c.user END " +
+           "FROM Connection c WHERE (c.user.id = :userId OR c.connectedUser.id = :userId) " +
+           "AND c.status = 'ACCEPTED'")
+    List<User> findAcceptedConnectionUsers(@Param("userId") Long userId);
 }

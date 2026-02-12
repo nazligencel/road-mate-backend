@@ -30,4 +30,5 @@ public class ActivityDto {
     // Participant count
     private Integer participantCount;
     private Boolean hasJoined; // Whether current user has joined
+    private Boolean isPast; // Whether activity date has passed
 }

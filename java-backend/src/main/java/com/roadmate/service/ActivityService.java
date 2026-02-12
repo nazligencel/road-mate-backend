@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -92,6 +93,10 @@ public class ActivityService {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
 
+        if (isActivityPast(activity)) {
+            throw new RuntimeException("Cannot join a past activity");
+        }
+
         if (activity.getParticipants().contains(user)) {
             throw new RuntimeException("You have already joined this activity");
         }
@@ -170,6 +175,18 @@ public class ActivityService {
         }
     }
 
+    private boolean isActivityPast(Activity activity) {
+        try {
+            if (activity.getDate() != null && !activity.getDate().isEmpty()) {
+                LocalDate activityDate = LocalDate.parse(activity.getDate());
+                return activityDate.isBefore(LocalDate.now());
+            }
+        } catch (Exception e) {
+            // If date parsing fails, treat as not past
+        }
+        return false;
+    }
+
     private ActivityDto mapToDto(Activity activity, User currentUser) {
         boolean hasJoined = activity.getParticipants().stream()
                 .anyMatch(p -> p.getId().equals(currentUser.getId()));
@@ -190,6 +207,7 @@ public class ActivityService {
                 .creatorImage(activity.getCreator().getProfileImageUrl() != null && !activity.getCreator().getProfileImageUrl().isEmpty() ? activity.getCreator().getProfileImageUrl() : activity.getCreator().getImage())
                 .participantCount(activity.getParticipants().size())
                 .hasJoined(hasJoined)
+                .isPast(isActivityPast(activity))
                 .build();
     }
 }

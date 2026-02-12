@@ -25,4 +25,7 @@ public class UserProfileUpdateDto {
 
     @Size(max = 100, message = "Location must be at most 100 characters")
     private String location;
+
+    @Size(max = 100, message = "Route must be at most 100 characters")
+    private String route;
 }

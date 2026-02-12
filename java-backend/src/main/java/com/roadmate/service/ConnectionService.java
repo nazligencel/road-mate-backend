@@ -8,13 +8,17 @@ import com.roadmate.exception.UnauthorizedException;
 import com.roadmate.model.Connection;
 import com.roadmate.model.Connection.ConnectionStatus;
 import com.roadmate.model.User;
+import com.roadmate.repository.BlockedUserRepository;
 import com.roadmate.repository.ConnectionRepository;
 import com.roadmate.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -24,6 +28,9 @@ public class ConnectionService {
 
     private final ConnectionRepository connectionRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final ExpoPushService expoPushService;
+    private final BlockedUserRepository blockedUserRepository;
 
     /**
      * QR tarandığında bağlantı isteği oluştur
@@ -95,6 +102,29 @@ public class ConnectionService {
 
         connection.setStatus(ConnectionStatus.ACCEPTED);
         Connection saved = connectionRepository.save(connection);
+
+        // Send FRIEND_ACCEPTED notification to the requester
+        User acceptor = connection.getConnectedUser();
+        User requester = connection.getUser();
+        notificationService.createNotification(
+                requester, acceptor, "FRIEND_ACCEPTED",
+                "Friend Request Accepted",
+                acceptor.getName() + " accepted your friend request!",
+                "{\"senderId\": " + acceptor.getId() + "}"
+        );
+        // Push notification
+        if (requester.getExpoPushToken() != null) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "FRIEND_ACCEPTED");
+            data.put("senderId", acceptor.getId());
+            expoPushService.sendBatchPushNotifications(
+                    Collections.singletonList(requester.getExpoPushToken()),
+                    "Friend Request Accepted",
+                    acceptor.getName() + " accepted your friend request!",
+                    data
+            );
+        }
+
         return toDTO(saved);
     }
 
@@ -146,6 +176,86 @@ public class ConnectionService {
     }
 
     /**
+     * Profil/explore'dan arkadaş isteği gönder (bildirimli)
+     */
+    @Transactional
+    public ConnectionDTO sendConnectionRequest(Long senderUserId, Long targetUserId) {
+        // Block check
+        if (blockedUserRepository.existsBlockBetween(senderUserId, targetUserId)) {
+            throw new BadRequestException("Cannot send request to this user");
+        }
+
+        ConnectionDTO result = connectByQR(senderUserId, targetUserId);
+
+        // Send FRIEND_REQUEST notification
+        User sender = userRepository.findById(senderUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı", senderUserId));
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hedef kullanıcı", targetUserId));
+
+        // Only send notification if status is PENDING (not auto-accepted)
+        if (result.getStatus() == ConnectionStatus.PENDING) {
+            notificationService.createNotification(
+                    target, sender, "FRIEND_REQUEST",
+                    "Friend Request",
+                    sender.getName() + " sent you a friend request!",
+                    "{\"senderId\": " + sender.getId() + "}"
+            );
+            if (target.getExpoPushToken() != null) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("type", "FRIEND_REQUEST");
+                data.put("senderId", sender.getId());
+                expoPushService.sendBatchPushNotifications(
+                        Collections.singletonList(target.getExpoPushToken()),
+                        "Friend Request",
+                        sender.getName() + " sent you a friend request!",
+                        data
+                );
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * İki kullanıcı arası bağlantı durumunu kontrol et
+     */
+    public String getConnectionStatus(Long currentUserId, Long targetUserId) {
+        Optional<Connection> connection = connectionRepository
+                .findConnectionBetweenUsers(currentUserId, targetUserId);
+
+        if (connection.isEmpty()) {
+            return "NONE";
+        }
+
+        Connection conn = connection.get();
+        if (conn.getStatus() == ConnectionStatus.ACCEPTED) {
+            return "FRIENDS";
+        }
+        if (conn.getStatus() == ConnectionStatus.PENDING) {
+            if (conn.getUser().getId().equals(currentUserId)) {
+                return "PENDING_SENT";
+            } else {
+                return "PENDING_RECEIVED";
+            }
+        }
+
+        return "NONE";
+    }
+
+    /**
+     * Arkadaşı sil veya bekleyen isteği iptal et
+     */
+    @Transactional
+    public void removeConnection(Long currentUserId, Long targetUserId) {
+        Connection connection = connectionRepository
+                .findConnectionBetweenUsers(currentUserId, targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Connection not found"));
+
+        connectionRepository.delete(connection);
+    }
+
+    /**
      * Connection'ı DTO'ya çevir
      */
     private ConnectionDTO toDTO(Connection connection) {
@@ -167,6 +277,8 @@ public class ConnectionService {
                 .vehicle(user.getVehicle())
                 .vehicleModel(user.getVehicleModel())
                 .status(user.getStatus())
+                .route(user.getRoute())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
 }

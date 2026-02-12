@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.roadmate.dto.UserProfileUpdateDto;
 
@@ -42,6 +44,9 @@ public class UserController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private com.roadmate.service.RouteNotificationService routeNotificationService;
+
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -58,7 +63,10 @@ public class UserController {
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(@Valid @RequestBody UserProfileUpdateDto updateRequest) {
         User user = getCurrentUser();
-        
+
+        // Capture old route for change detection
+        String oldRoute = user.getRoute();
+
         if (updateRequest.getName() != null) {
             user.setName(updateRequest.getName());
         }
@@ -80,8 +88,18 @@ public class UserController {
         if (updateRequest.getLocation() != null) {
             user.setLocation(updateRequest.getLocation());
         }
+        if (updateRequest.getRoute() != null) {
+            user.setRoute(updateRequest.getRoute());
+        }
 
         User updatedUser = userRepository.save(user);
+
+        // Route change detection — send notifications async
+        String newRoute = updatedUser.getRoute();
+        if (newRoute != null && !newRoute.isBlank() && !newRoute.equals(oldRoute)) {
+            routeNotificationService.handleRouteChange(updatedUser, newRoute);
+        }
+
         return ResponseEntity.ok(updatedUser);
     }
 
@@ -214,6 +232,42 @@ public class UserController {
         User user = getCurrentUser();
         authService.deleteAccount(user.getEmail());
         return ResponseEntity.ok(Map.of("message", "Hesap başarıyla silindi"));
+    }
+
+    @GetMapping("/{userId}/public-profile")
+    public ResponseEntity<?> getPublicProfile(@PathVariable Long userId) {
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<GalleryPhoto> gallery = galleryPhotoRepository.findByUserId(userId);
+        List<VehiclePhoto> vehiclePhotos = vehiclePhotoRepository.findByUserId(userId);
+
+        // Map photos to safe DTOs (without User entity to avoid password leak)
+        List<Map<String, Object>> galleryDtos = gallery.stream().map(p -> Map.<String, Object>of(
+                "id", p.getId(),
+                "photoUrl", p.getPhotoUrl()
+        )).collect(Collectors.toList());
+
+        List<Map<String, Object>> vehicleDtos = vehiclePhotos.stream().map(p -> Map.<String, Object>of(
+                "id", p.getId(),
+                "photoUrl", p.getPhotoUrl()
+        )).collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", targetUser.getId());
+        result.put("name", targetUser.getName() != null ? targetUser.getName() : "");
+        result.put("username", targetUser.getUsername() != null ? targetUser.getUsername() : "");
+        result.put("tagline", targetUser.getTagline() != null ? targetUser.getTagline() : "");
+        result.put("status", targetUser.getStatus() != null ? targetUser.getStatus() : "");
+        result.put("location", targetUser.getLocation() != null ? targetUser.getLocation() : "");
+        result.put("profileImageUrl", targetUser.getProfileImageUrl() != null ? targetUser.getProfileImageUrl() : (targetUser.getImage() != null ? targetUser.getImage() : ""));
+        result.put("vehicle", targetUser.getVehicle() != null ? targetUser.getVehicle() : "");
+        result.put("vehicleBrand", targetUser.getVehicleBrand() != null ? targetUser.getVehicleBrand() : "");
+        result.put("vehicleModel", targetUser.getVehicleModel() != null ? targetUser.getVehicleModel() : "");
+        result.put("galleryPhotos", galleryDtos);
+        result.put("vehiclePhotos", vehicleDtos);
+
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/push-token")

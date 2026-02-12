@@ -55,4 +55,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     java.util.Optional<User> findByEmail(String email);
     boolean existsByUsername(String username);
+
+    @Query(value = "SELECT * FROM users WHERE route IS NOT NULL AND route != '' " +
+                   "AND LOWER(route) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                   "AND id != :excludeUserId " +
+                   "AND expo_push_token IS NOT NULL " +
+                   "LIMIT 20", nativeQuery = true)
+    List<User> findUsersWithMatchingRoute(@Param("keyword") String keyword, @Param("excludeUserId") Long excludeUserId);
 }

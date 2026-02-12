@@ -31,5 +31,7 @@ public class ConnectionDTO {
         private String vehicle;
         private String vehicleModel;
         private String status;
+        private String route;
+        private String profileImageUrl;
     }
 }
