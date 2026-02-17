@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadMate - Connect with Travelers on the Road</title>
+    <meta name="description" content="RoadMate connects nomads and travelers on the road. Find nearby travelers, chat, share routes, and stay safe with SOS alerts.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #fff;
+            background: #0a0a1a;
+            overflow-x: hidden;
+        }
+
+        /* ── Animated Background ── */
+        .bg-gradient {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1245 30%, #302b63 60%, #24243e 100%);
+            z-index: -2;
+        }
+        .bg-glow {
+            position: fixed;
+            width: 600px; height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            z-index: -1;
+            animation: float 8s ease-in-out infinite;
+        }
+        .bg-glow-1 { top: -200px; right: -100px; background: #7c5cfc; }
+        .bg-glow-2 { bottom: -200px; left: -100px; background: #00d4aa; animation-delay: -4s; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(30px); }
+        }
+
+        /* ── Navigation ── */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            background: rgba(10, 10, 26, 0.6);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .logo {
+            font-size: 1.5em;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .logo span { color: #7c5cfc; }
+        nav a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover { color: #fff; }
+        .nav-links { display: flex; gap: 30px; align-items: center; }
+
+        /* ── Hero ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 20px 80px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(124, 92, 252, 0.15);
+            border: 1px solid rgba(124, 92, 252, 0.3);
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.85em;
+            font-weight: 500;
+            color: #a78bfa;
+            margin-bottom: 30px;
+        }
+        .badge::before { content: "🚐"; }
+        .hero h1 {
+            font-size: clamp(2.5em, 6vw, 4.5em);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            letter-spacing: -1.5px;
+        }
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, #7c5cfc, #00d4aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            font-size: 1.2em;
+            color: rgba(255,255,255,0.6);
+            max-width: 550px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+        .cta-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #7c5cfc, #5b3fd4);
+            color: #fff;
+            padding: 16px 32px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 8px 30px rgba(124, 92, 252, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(124, 92, 252, 0.4);
+        }
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            padding: 16px 32px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            transition: transform 0.3s, background 0.3s;
+        }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.12);
+        }
+
+        /* ── Phone Mockup ── */
+        .hero-visual {
+            margin-top: 60px;
+            position: relative;
+        }
+        .phone-mockup {
+            width: 280px;
+            height: 560px;
+            background: linear-gradient(145deg, #1a1845, #0f0c29);
+            border-radius: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            padding: 12px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 80px rgba(124, 92, 252, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #1a1245, #0f0c29);
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 20px;
+        }
+        .phone-screen .map-placeholder {
+            width: 100%;
+            height: 60%;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #1a2a4a, #0f1a3a);
+            position: relative;
+            overflow: hidden;
+        }
+        .map-placeholder::after {
+            content: "";
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 16px; height: 16px;
+            background: #7c5cfc;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(124, 92, 252, 0.6), 0 0 60px rgba(124, 92, 252, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(124, 92, 252, 0.6), 0 0 60px rgba(124, 92, 252, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(124, 92, 252, 0.8), 0 0 80px rgba(124, 92, 252, 0.3); }
+        }
+        .map-dot {
+            position: absolute;
+            width: 10px; height: 10px;
+            background: #00d4aa;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 212, 170, 0.5);
+        }
+        .map-dot:nth-child(1) { top: 30%; left: 25%; }
+        .map-dot:nth-child(2) { top: 65%; left: 70%; }
+        .map-dot:nth-child(3) { top: 40%; left: 60%; }
+        .phone-card {
+            width: 100%;
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .phone-avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c5cfc, #00d4aa);
+        }
+        .phone-card-text { flex: 1; }
+        .phone-card-text .name { font-size: 0.75em; font-weight: 600; }
+        .phone-card-text .dist { font-size: 0.65em; color: rgba(255,255,255,0.5); }
+
+        /* ── Features ── */
+        .features {
+            padding: 100px 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .section-label {
+            text-align: center;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #7c5cfc;
+            margin-bottom: 16px;
+        }
+        .section-title {
+            text-align: center;
+            font-size: clamp(1.8em, 4vw, 2.8em);
+            font-weight: 800;
+            margin-bottom: 60px;
+            letter-spacing: -1px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 36px 30px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(124, 92, 252, 0.3);
+        }
+        .feature-icon {
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .fi-map { background: rgba(124, 92, 252, 0.15); }
+        .fi-chat { background: rgba(0, 212, 170, 0.15); }
+        .fi-sos { background: rgba(255, 82, 82, 0.15); }
+        .fi-community { background: rgba(255, 183, 77, 0.15); }
+        .fi-assist { background: rgba(66, 165, 245, 0.15); }
+        .fi-route { background: rgba(171, 71, 188, 0.15); }
+        .feature-card h3 {
+            font-size: 1.15em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .feature-card p {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.92em;
+            line-height: 1.6;
+        }
+
+        /* ── Stats ── */
+        .stats {
+            padding: 60px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #7c5cfc, #00d4aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.5);
+            margin-top: 6px;
+        }
+
+        /* ── CTA Section ── */
+        .cta-section {
+            padding: 100px 20px;
+            text-align: center;
+        }
+        .cta-box {
+            max-width: 650px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(124, 92, 252, 0.15), rgba(0, 212, 170, 0.08));
+            border: 1px solid rgba(124, 92, 252, 0.2);
+            border-radius: 28px;
+            padding: 60px 40px;
+        }
+        .cta-box h2 {
+            font-size: 2em;
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+        .cta-box p {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 30px;
+            font-size: 1.05em;
+        }
+
+        /* ── Footer ── */
+        footer {
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover { color: #fff; }
+        .copyright {
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8em;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            nav { padding: 16px 20px; }
+            .nav-links { gap: 16px; }
+            .features-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; gap: 20px; }
+            .cta-box { padding: 40px 24px; }
+            .phone-mockup { width: 240px; height: 480px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">Road<span>Mate</span></div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="privacy-policy.html">Privacy</a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="badge">Built for Digital Nomads & Travelers</div>
+        <h1>Meet Travelers<br><span class="gradient-text">On the Road</span></h1>
+        <p>RoadMate connects you with nearby nomads and travelers in real-time. Chat, share routes, request help, and stay safe together.</p>
+        <div class="cta-group">
+            <a href="#" class="btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                App Store
+            </a>
+            <a href="#features" class="btn-secondary">
+                Explore Features ↓
+            </a>
+        </div>
+
+        <!-- Phone Mockup -->
+        <div class="hero-visual">
+            <div class="phone-mockup">
+                <div class="phone-screen">
+                    <div class="map-placeholder">
+                        <div class="map-dot"></div>
+                        <div class="map-dot"></div>
+                        <div class="map-dot"></div>
+                    </div>
+                    <div class="phone-card">
+                        <div class="phone-avatar"></div>
+                        <div class="phone-card-text">
+                            <div class="name">Alex - Van Life</div>
+                            <div class="dist">2.3 km away</div>
+                        </div>
+                    </div>
+                    <div class="phone-card">
+                        <div class="phone-avatar"></div>
+                        <div class="phone-card-text">
+                            <div class="name">Maria - Motorcycle</div>
+                            <div class="dist">5.1 km away</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="section-label">Features</div>
+        <h2 class="section-title">Everything You Need on the Road</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon fi-map">📍</div>
+                <h3>Live Map</h3>
+                <p>See nearby travelers in real-time on an interactive map. Filter by vehicle type, distance, and more.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon fi-chat">💬</div>
+                <h3>Direct Messaging</h3>
+                <p>Connect instantly with other travelers. Chat, share tips, and make plans to meet up on the road.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon fi-sos">🆘</div>
+                <h3>SOS Alerts</h3>
+                <p>Send emergency alerts to all nearby travelers. Get help when you need it most, wherever you are.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon fi-community">🌍</div>
+                <h3>Community</h3>
+                <p>Share experiences, ask questions, and connect with the nomad community through discussions.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon fi-assist">🔧</div>
+                <h3>Roadside Assist</h3>
+                <p>Need help with your vehicle? Post a request and nearby travelers with the right skills can assist you.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon fi-route">🛣️</div>
+                <h3>Route Sharing</h3>
+                <p>Share your planned routes with the community. Find travel buddies heading the same direction.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats">
+        <div class="stats-grid">
+            <div>
+                <div class="stat-number">Real-time</div>
+                <div class="stat-label">Location Sharing</div>
+            </div>
+            <div>
+                <div class="stat-number">Instant</div>
+                <div class="stat-label">SOS Alerts</div>
+            </div>
+            <div>
+                <div class="stat-number">Global</div>
+                <div class="stat-label">Nomad Community</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-box">
+            <h2>Ready to Hit the Road?</h2>
+            <p>Join the community of travelers and nomads. Download RoadMate and never travel alone again.</p>
+            <a href="#" class="btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download on the App Store
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-links">
+            <a href="privacy-policy.html">Privacy Policy</a>
+            <a href="mailto:roadmatenomad@gmail.com">Contact</a>
+        </div>
+        <p class="copyright">&copy; 2026 RoadMate. All rights reserved.</p>
+    </footer>
+</body>
+</html>

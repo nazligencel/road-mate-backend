@@ -55,6 +55,7 @@ public class SecurityConfig {
                     auth.requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/**").permitAll() // Test için API açık
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/privacy-policy.html").permitAll()
                         .anyRequest().authenticated()
                 );
 
